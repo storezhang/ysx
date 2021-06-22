@@ -1,9 +1,9 @@
 package ysx
 
 import (
-	`encoding/json`
-	`net/http`
-	`time`
+	"encoding/json"
+	"net/http"
+	"time"
 )
 
 const (
@@ -37,6 +37,7 @@ type meeting interface {
 	SetChairman() *setChairmanService
 	GetMeetingDevice() *getMeetingDeviceService
 	MultiScreenSetting() *multiScreenSettingService
+	ReInvite() *reInviteService
 }
 
 type createMeetingService struct {
