@@ -1,11 +1,14 @@
 package ysx
 
 import (
-	`crypto/tls`
-	`net/http`
-	`net/url`
-	`sync`
-	`time`
+	"context"
+	"crypto/tls"
+	"net/http"
+	"net/url"
+	"sync"
+	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
 const (
@@ -26,6 +29,7 @@ type Client interface {
 
 type client struct {
 	c Doer
+	r *redis.Client
 
 	mu                   sync.RWMutex
 	url                  string
@@ -36,6 +40,8 @@ type client struct {
 	retryLimit           int
 	retryInterval        time.Duration
 	header               http.Header
+	option               *redis.Options
+	tokenKey             string
 }
 
 type ClientOptionFunc func(*client) error
@@ -102,6 +108,22 @@ func SetProxyURL(u string) ClientOptionFunc {
 	}
 }
 
+func SetRedisOption(option *redis.Options) ClientOptionFunc {
+	return func(c *client) error {
+		c.option = option
+
+		return nil
+	}
+}
+
+func SetTokenKey(key string) ClientOptionFunc {
+	return func(c *client) error {
+		c.tokenKey = key
+
+		return nil
+	}
+}
+
 func NewClient(options ...ClientOptionFunc) (Client, error) {
 	client := &client{
 		c: &http.Client{
@@ -124,6 +146,11 @@ func NewClient(options ...ClientOptionFunc) (Client, error) {
 		}
 	}
 	client.header.Add("Content-Type", "application/json; charset=utf-8")
+
+	client.r = redis.NewClient(client.option)
+	if _, err := client.r.Ping(context.Background()).Result(); nil != err {
+		panic(err)
+	}
 
 	_, err := client.GetToken()
 	if err != nil {
