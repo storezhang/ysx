@@ -1,11 +1,12 @@
 package ysx
 
 import (
-	`encoding/json`
-	`fmt`
-	`io`
-	`io/ioutil`
-	`net/http`
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 )
 
 type Response struct {
@@ -36,6 +37,7 @@ func (c *client) newResponse(r *http.Response) (*Response, error) {
 				return nil, err
 			}
 			if rsp.Code == 10403 {
+				c.r.Del(context.Background(), c.tokenKey)
 				c.GetToken()
 			}
 			if rsp.Code != 200 {
