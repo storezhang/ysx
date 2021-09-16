@@ -1,12 +1,10 @@
 package ysx
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -34,41 +32,34 @@ type TokenRsp struct {
 }
 
 func (c *client) GetToken() (*TokenRsp, error) {
-	var rsp *TokenRsp
+	var (
+		token string
+		rsp   *TokenRsp
+	)
 
-	token, _ := c.r.Get(context.Background(), c.tokenKey).Result()
-	if "" == token {
-		r, err := c.performRequest(PerformRequestOptions{
-			Method: http.MethodGet,
-			Path:   "/mixapi/token",
-			Params: url.Values{
-				"identity": []string{c.basicIdentity},
-				"mobile":   []string{c.basicMobile},
-				"key":      []string{c.basicKey},
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
+	r, err := c.performRequest(PerformRequestOptions{
+		Method: http.MethodGet,
+		Path:   "/mixapi/token",
+		Params: url.Values{
+			"identity": []string{c.basicIdentity},
+			"mobile":   []string{c.basicMobile},
+			"key":      []string{c.basicKey},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
 
-		rsp = new(TokenRsp)
-		err = json.Unmarshal(r.Data, rsp)
-		if err != nil {
-			return nil, err
-		}
+	rsp = new(TokenRsp)
+	err = json.Unmarshal(r.Data, rsp)
+	if err != nil {
+		return nil, err
+	}
 
-		if rsp.RefreshToken != nil {
-			token = *rsp.RefreshToken
-		} else {
-			token = rsp.AccessToken
-		}
-
-		expireTime, err := strconv.Atoi(rsp.ExpiresTime)
-		if err != nil {
-			return nil, err
-		}
-
-		c.r.Set(context.Background(), c.tokenKey, token, time.Duration(expireTime/2)*time.Second)
+	if rsp.RefreshToken != nil {
+		token = *rsp.RefreshToken
+	} else {
+		token = rsp.AccessToken
 	}
 
 	c.mu.RLock()
