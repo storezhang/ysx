@@ -2,6 +2,7 @@ package ysx
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -37,6 +38,8 @@ func (c *client) newResponse(r *http.Response) (*Response, error) {
 			}
 			if rsp.Code == 10403 {
 				c.GetToken()
+
+				return nil, errors.New("token过期")
 			}
 			if rsp.Code != 200 {
 				e := &ErrResponse{
