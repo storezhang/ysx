@@ -1,8 +1,8 @@
 package ysx
 
 import (
-	`encoding/json`
-	`net/http`
+	"encoding/json"
+	"net/http"
 )
 
 type multiScreenSettingService struct {
@@ -128,10 +128,6 @@ func (m *multiScreenSettingService) buildBody() (interface{}, error) {
 	}
 	if m.bodyString != "" {
 		return m.bodyString, nil
-	}
-
-	for i := range m.chosenDevices {
-		m.chosenDevices[i].Index = i + 1
 	}
 
 	restore := &meetingScreenSettingRestore{
