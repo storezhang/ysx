@@ -9,7 +9,7 @@ import (
 )
 
 type token interface {
-	GetToken() (*TokenRsp, error)
+	GetToken()
 }
 
 type TokenRsp struct {
@@ -31,51 +31,61 @@ type TokenRsp struct {
 	IfFirstLogin            *bool            `json:"if_first_login"`
 }
 
-func (c *client) GetToken() (*TokenRsp, error) {
+func (c *client) GetToken() {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var (
 		token string
 		rsp   *TokenRsp
 	)
 
-	r, err := c.performRequest(PerformRequestOptions{
-		Method: http.MethodGet,
-		Path:   "/mixapi/token",
-		Params: url.Values{
-			"identity": []string{c.basicIdentity},
-			"mobile":   []string{c.basicMobile},
-			"key":      []string{c.basicKey},
-		},
-	})
-	if err != nil {
-		return nil, err
+	for i := 0; i < c.retryLimit+1; i++ {
+		r, err := c.performRequest(PerformRequestOptions{
+			Method: http.MethodGet,
+			Path:   "/mixapi/token",
+			Params: url.Values{
+				"identity": []string{c.basicIdentity},
+				"mobile":   []string{c.basicMobile},
+				"key":      []string{c.basicKey},
+			},
+		})
+		if err != nil {
+			fmt.Println(fmt.Sprintf("---获取token失败：%s，重试第%d次", err, i))
+
+			continue
+		}
+
+		rsp = new(TokenRsp)
+		err = json.Unmarshal(r.Data, rsp)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("---获取token失败：%s，重试第%d次", err, i))
+
+			continue
+		}
+
+		if rsp.RefreshToken != nil {
+			token = *rsp.RefreshToken
+		} else {
+			token = rsp.AccessToken
+		}
+
+		c.header["X-ACCESS-TOKEN"] = []string{token}
+
+		fmt.Println("---获取token成功")
+
+		return
 	}
 
-	rsp = new(TokenRsp)
-	err = json.Unmarshal(r.Data, rsp)
-	if err != nil {
-		return nil, err
-	}
+	panic("---获取token失败，程序退出")
 
-	if rsp.RefreshToken != nil {
-		token = *rsp.RefreshToken
-	} else {
-		token = rsp.AccessToken
-	}
-
-	c.mu.RLock()
-	c.header["X-ACCESS-TOKEN"] = []string{token}
-	c.mu.RUnlock()
-
-	return rsp, nil
+	return
 }
 
 func refreshToken(c *client) {
 	for {
 		time.Sleep(c.tokenRefreshInterval)
 
-		_, err := c.GetToken()
-		if err != nil {
-			fmt.Println(err)
-		}
+		c.GetToken()
 	}
 }

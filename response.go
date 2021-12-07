@@ -37,8 +37,6 @@ func (c *client) newResponse(r *http.Response) (*Response, error) {
 				return nil, err
 			}
 			if rsp.Code == 10403 {
-				c.GetToken()
-
 				return nil, errors.New("token过期")
 			}
 			if rsp.Code != 200 {

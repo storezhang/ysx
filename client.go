@@ -2,6 +2,7 @@ package ysx
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -69,7 +70,9 @@ func SetTokenRefreshInterval(interval time.Duration) ClientOptionFunc {
 
 func SetRetryLimit(limit int) ClientOptionFunc {
 	return func(c *client) error {
-		c.retryLimit = limit
+		if limit > 0 {
+			c.retryLimit = limit
+		}
 
 		return nil
 	}
@@ -126,10 +129,7 @@ func NewClient(options ...ClientOptionFunc) (Client, error) {
 	}
 	client.header.Add("Content-Type", "application/json; charset=utf-8")
 
-	_, err := client.GetToken()
-	if err != nil {
-		panic(err)
-	}
+	client.GetToken()
 
 	go refreshToken(client)
 
@@ -145,10 +145,6 @@ type PerformRequestOptions struct {
 }
 
 func (c *client) performRequest(option PerformRequestOptions) (*Response, error) {
-	c.mu.RLock()
-	defaultHeaders := c.header
-	c.mu.RUnlock()
-
 	var (
 		err error
 		req *Request
@@ -164,7 +160,7 @@ func (c *client) performRequest(option PerformRequestOptions) (*Response, error)
 	if err != nil {
 		return nil, err
 	}
-	for key, value := range defaultHeaders {
+	for key, value := range c.header {
 		for _, v := range value {
 			req.Header.Add(key, v)
 		}
@@ -181,10 +177,27 @@ func (c *client) performRequest(option PerformRequestOptions) (*Response, error)
 		}
 	}
 
-	for n := 0; n < c.retryLimit-1; n++ {
+	for n := 0; n < c.retryLimit+1; n++ {
 		rsp, err = c.request((*http.Request)(req))
 		if err == nil {
+			fmt.Println(fmt.Sprintf("---调用%s成功", option.Path))
+
 			break
+		}
+
+		fmt.Println(fmt.Sprintf("---调用%s失败：%s(%d)", option.Path, err, n))
+
+		if "token过期" == err.Error() {
+			fmt.Println("---重新获取token")
+
+			c.GetToken()
+
+			req.Header = make(http.Header)
+			for key, value := range c.header {
+				for _, v := range value {
+					req.Header.Add(key, v)
+				}
+			}
 		}
 
 		time.Sleep(c.retryInterval)
