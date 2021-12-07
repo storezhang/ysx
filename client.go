@@ -1,12 +1,12 @@
 package ysx
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
-	"net/url"
-	"sync"
-	"time"
+	`crypto/tls`
+	`fmt`
+	`net/http`
+	`net/url`
+	`sync`
+	`time`
 )
 
 const (
