@@ -32,8 +32,19 @@ type TokenRsp struct {
 }
 
 func (c *client) GetToken() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	// 判断是否有其他goroutine在拿token
+	// 如果有，还是阻塞在这
+	do := len(c.ch) == 0
+
+	c.ch <- struct{}{}
+	defer func() {
+		<-c.ch
+	}()
+
+	// 如果最开始有其他goroutine在拿token，则此处直接退出
+	if !do {
+		return
+	}
 
 	var (
 		token string

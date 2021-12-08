@@ -5,7 +5,6 @@ import (
 	`fmt`
 	`net/http`
 	`net/url`
-	`sync`
 	`time`
 )
 
@@ -28,7 +27,7 @@ type Client interface {
 type client struct {
 	c Doer
 
-	mu                   sync.RWMutex
+	ch                   chan struct{}
 	url                  string
 	basicIdentity        string
 	basicMobile          string
@@ -115,6 +114,7 @@ func NewClient(options ...ClientOptionFunc) (Client, error) {
 				},
 			},
 		},
+		ch:                   make(chan struct{}, 1),
 		url:                  DefaultURL,
 		tokenRefreshInterval: DefaultTokenRefreshInterval,
 		retryLimit:           DefaultRetryLimit,
