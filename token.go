@@ -32,8 +32,8 @@ type TokenRsp struct {
 }
 
 func (c *client) GetToken() {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	var (
 		token string

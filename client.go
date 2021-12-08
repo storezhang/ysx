@@ -151,33 +151,29 @@ func (c *client) performRequest(option PerformRequestOptions) (*Response, error)
 		rsp *Response
 	)
 
-	pathWithParams := option.Path
-	if len(option.Params) > 0 {
-		pathWithParams += "?" + option.Params.Encode()
-	}
+	for n := 0; n < c.retryLimit+1; n++ {
+		pathWithParams := option.Path
+		if len(option.Params) > 0 {
+			pathWithParams += "?" + option.Params.Encode()
+		}
 
-	req, err = NewRequest(option.Method, c.url+pathWithParams)
-	if err != nil {
-		return nil, err
-	}
-	for key, value := range c.header {
-		for _, v := range value {
-			req.Header.Add(key, v)
-		}
-	}
-	for key, value := range option.Headers {
-		for _, v := range value {
-			req.Header.Add(key, v)
-		}
-	}
-	if nil != option.Body {
-		err = req.SetBody(option.Body)
+		req, err = NewRequest(option.Method, c.url+pathWithParams)
 		if err != nil {
 			return nil, err
 		}
-	}
+		for key, value := range c.header {
+			req.Header[key] = value
+		}
+		for key, value := range option.Headers {
+			req.Header[key] = value
+		}
+		if nil != option.Body {
+			err = req.SetBody(option.Body)
+			if err != nil {
+				return nil, err
+			}
+		}
 
-	for n := 0; n < c.retryLimit+1; n++ {
 		rsp, err = c.request((*http.Request)(req))
 		if err == nil {
 			fmt.Println(fmt.Sprintf("---调用%s成功", option.Path))
@@ -194,9 +190,7 @@ func (c *client) performRequest(option PerformRequestOptions) (*Response, error)
 
 			req.Header = make(http.Header)
 			for key, value := range c.header {
-				for _, v := range value {
-					req.Header.Add(key, v)
-				}
+				req.Header[key] = value
 			}
 		}
 
